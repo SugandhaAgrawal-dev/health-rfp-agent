@@ -1,0 +1,162 @@
+# =============================================================================
+# Health RFP & Grant Response Agent — Python Dependencies
+# =============================================================================
+# Python >= 3.11 required
+#
+# Install:
+#   pip install -r requirements.txt
+#
+# Install dev extras only:
+#   pip install -r requirements.txt  (dev deps are included at the bottom)
+#
+# Minimum hardware for running Ollama locally:
+#   - 8 GB RAM  (phi3:mini, llama3.1:8b with CPU offload)
+#   - 16 GB RAM (llama3.1:8b fully in RAM, recommended)
+#   - 8 GB VRAM GPU (llama3.1:8b at full speed)
+# =============================================================================
+
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.0           # Async Python web framework
+uvicorn[standard]==0.30.6  # ASGI server with websocket + HTTP/2 support
+python-multipart==0.0.9    # Required for FastAPI file upload (UploadFile)
+starlette==0.41.2          # FastAPI's underlying ASGI toolkit (pinned for compat)
+
+
+# ── Database: PostgreSQL + pgvector ──────────────────────────────────────────
+# pgvector enables vector similarity search inside Postgres.
+# Required by: retriever.py, rag_retrieval.py, knowledge_base_service.py
+sqlalchemy[asyncio]==2.0.35  # Async ORM — used for all DB models and queries
+asyncpg==0.29.0              # Async PostgreSQL driver (used by SQLAlchemy async)
+pgvector==0.3.5              # pgvector Python bindings (Vector column type)
+alembic==1.13.3              # Database schema migrations
+
+
+# ── Ollama — Local LLM Client ─────────────────────────────────────────────────
+# Ollama runs LLMs locally. This project uses it for:
+#   - Embeddings:  nomic-embed-text (768-dim) — used in retriever + rag_retrieval
+#   - Generation:  llama3.1:8b / mistral:7b / phi3:mini — used in generator
+#   - Parser:      any chat model — section extraction, criteria parsing
+#   - Compliance:  any chat model — fabrication detection, gap analysis
+#
+# Install Ollama:  https://ollama.com/download
+# Pull models:
+#   ollama pull llama3.1:8b        # primary LLM (generation)
+#   ollama pull nomic-embed-text   # embeddings (retrieval)
+#   ollama pull phi3:mini          # lightweight fallback LLM
+#   ollama pull mistral:7b         # alternative generation model
+#   ollama pull medllama2:7b       # healthcare-fine-tuned (optional, best quality)
+ollama==0.3.3              # Official Ollama Python SDK
+
+
+# ── RAG Retrieval ─────────────────────────────────────────────────────────────
+# Used by: retriever.py, rag_retrieval.py
+#
+# rank-bm25:   BM25 keyword reranking over pgvector ANN candidates
+#              Stage 4 of the RAG pipeline (hybrid scoring: 60% vector + 40% BM25)
+rank-bm25==0.2.2
+
+
+# ── HTTP Client ───────────────────────────────────────────────────────────────
+# Used by:
+#   - ollama_client.py  — direct HTTP calls to Ollama REST API
+#   - ingestor.py       — SAM.gov API calls
+#   - rag_retrieval.py  — _OllamaHTTP inline client
+httpx==0.27.2              # Async HTTP client (core dependency)
+aiofiles==24.1.0           # Async file I/O
+
+
+# ── Document Processing ───────────────────────────────────────────────────────
+# Used by: text_extractor.py, exporter.py
+#
+# PyMuPDF (fitz): Fast PDF text extraction + page rasterisation for OCR fallback
+# pdfplumber:     Table-aware PDF extraction (supplements PyMuPDF)
+# python-docx:    Read DOCX uploads + write formatted Word proposal exports
+# pytesseract:    OCR for scanned PDFs (requires system tesseract-ocr package)
+# pillow:         Image handling for pytesseract + PyMuPDF rasterised pages
+PyMuPDF==1.24.10           # PDF text extraction (fitz)
+pdfplumber==0.11.4         # Table-aware PDF parsing
+python-docx==1.1.2         # DOCX read + write (proposal export)
+pytesseract==0.3.13        # OCR fallback for scanned PDFs
+pillow==10.4.0             # Image processing (required by pytesseract + PyMuPDF)
+openpyxl==3.1.5            # XLSX read support (for budget attachments)
+python-pptx==1.0.2         # PPTX read support (for slide-based RFPs)
+beautifulsoup4==4.12.3     # HTML RFP parsing
+
+
+# ── Data Validation ───────────────────────────────────────────────────────────
+pydantic==2.9.2            # Request/response schema validation (FastAPI models)
+pydantic-settings==2.5.2   # Settings management from .env file
+
+
+# ── Auth & Security ───────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0  # JWT creation and verification
+passlib[bcrypt]==1.7.4            # Password hashing
+
+
+# ── Retry & Resilience ────────────────────────────────────────────────────────
+# Used by: generator.py (_call_with_fallback), ollama_client.py
+tenacity==9.0.0            # Retry with exponential back-off on transient failures
+
+
+# ── Structured Logging ────────────────────────────────────────────────────────
+structlog==24.4.0          # Structured JSON logging (used across all modules)
+
+
+# ── Task Queue ────────────────────────────────────────────────────────────────
+# Used for background proposal generation jobs (proposals API)
+celery==5.4.0              # Distributed task queue
+redis==5.1.1               # Redis client (Celery broker + result backend)
+
+
+# ── Cloud Storage ─────────────────────────────────────────────────────────────
+# Used for storing uploaded RFP files and exported proposal documents
+# Only required if deploying to GCP. Remove if using local disk storage.
+google-cloud-storage==2.18.2
+
+
+# ── Environment ───────────────────────────────────────────────────────────────
+python-dotenv==1.0.1       # Load .env file into os.environ
+
+
+# =============================================================================
+# Testing Dependencies
+# =============================================================================
+
+pytest==8.3.3              # Test runner
+pytest-asyncio==0.24.0     # Async test support (required for all async tests)
+pytest-cov==5.0.0          # Code coverage reports
+aiosqlite==0.20.0          # In-memory SQLite for unit tests (no Postgres needed)
+factory-boy==3.3.1         # Test fixture factories
+
+
+# =============================================================================
+# Development Tools
+# =============================================================================
+
+black==24.10.0             # Code formatter
+ruff==0.6.9                # Fast linter (replaces flake8 + isort)
+mypy==1.11.2               # Static type checker
+pre-commit==3.8.0          # Git pre-commit hooks
+
+
+# =============================================================================
+# System-level dependencies (install separately — not via pip)
+# =============================================================================
+#
+# Ubuntu / Debian:
+#   sudo apt-get install -y tesseract-ocr libreoffice postgresql-16
+#   sudo apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender-dev
+#
+# macOS (Homebrew):
+#   brew install tesseract tesseract-lang postgresql@16
+#   brew install --cask libreoffice
+#
+# PostgreSQL extension (run after DB is up):
+#   psql -U postgres -d health_rfp_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+#
+# Ollama (run separately from pip — native binary):
+#   curl -fsSL https://ollama.com/install.sh | sh
+#   ollama pull llama3.1:8b
+#   ollama pull nomic-embed-text
+# =============================================================================
